@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Malla Curricular Interactiva</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 1600px;
+      height: 900px;
+      font-family: sans-serif;
+      background: #f0f0f0;
+    }
+
+    #malla {
+      display: flex;
+      flex-direction: row;
+      height: 100%;
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      box-sizing: border-box;
+      padding: 10px;
+      gap: 10px;
+    }
+
+    .semestre {
+      flex: 0 0 auto;
+      width: 190px;
+      height: 100%;
+      background: #fff;
+      border-left: 5px solid #007acc;
+      box-shadow: 0 0 4px rgba(0,0,0,0.1);
+      border-radius: 5px;
+      padding: 8px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .titulo {
+      font-size: 14px;
+      font-weight: bold;
+      text-align: center;
+      color: #007acc;
+      margin-bottom: 5px;
+    }
+
+    .curso {
+      background: #e6f0ff;
+      font-size: 11px;
+      margin-bottom: 4px;
+      padding: 5px;
+      border-radius: 3px;
+      line-height: 1.2;
+    }
+
+    .culminado span.nombre {
+      text-decoration: line-through;
+      color: #555;
+    }
+
+    .creditos {
+      font-size: 10px;
+      color: #555;
+    }
+
+    .requisitos {
+      font-size: 9px;
+      color: #777;
+    }
+
+    input[type="checkbox"] {
+      transform: scale(0.8);
+      margin-right: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div id="malla"></div>
+
+  <script>
+    let estadoCursos = {};
+
+    function renderMalla(data) {
+      const malla = document.getElementById("malla");
+      const materiasPorId = {};
+
+      data.mallaData.forEach(b => {
+        b.materias.forEach(m => materiasPorId[m.id] = m);
+      });
+
+      data.mallaData.forEach(bloque => {
+        if (!bloque.materias.length) return;
+
+        const col = document.createElement("div");
+        col.className = "semestre";
+
+        const titulo = document.createElement("div");
+        titulo.className = "titulo";
+        titulo.textContent = `Año ${bloque.año} - ${bloque.periodo}`;
+        col.appendChild(titulo);
+
+        bloque.materias.forEach(m => {
+          const curso = document.createElement("div");
+          curso.className = "curso";
+          curso.id = m.id;
+
+          const check = document.createElement("input");
+          check.type = "checkbox";
+          check.addEventListener("change", () => {
+            estadoCursos[m.id] = check.checked;
+            actualizar();
+          });
+
+          const nombre = document.createElement("span");
+          nombre.className = "nombre";
+          nombre.innerHTML = `${m.nombre} <span class="creditos">(${m.creditos} cr)</span>`;
+          curso.appendChild(check);
+          curso.appendChild(nombre);
+
+          if (m.requisitos?.length) {
+            const requisitos = document.createElement("div");
+            requisitos.className = "requisitos";
+            requisitos.textContent = "Req: " + m.requisitos.map(id => materiasPorId[id]?.nombre || "(?)").join(", ");
+            curso.appendChild(requisitos);
+          }
+
+          col.appendChild(curso);
+        });
+
+        malla.appendChild(col);
+      });
+
+      function actualizar() {
+        Object.values(materiasPorId).forEach(m => {
+          const el = document.getElementById(m.id);
+          if (!el) return;
+
+          el.classList.toggle("culminado", estadoCursos[m.id] === true);
+
+          const requisitosOK = (m.requisitos || []).every(id => estadoCursos[id]);
+          el.style.opacity = requisitosOK ? "1" : "0.3";
+        });
+      }
+    }
+
+    fetch("malla.json")
+      .then(r => r.json())
+      .then(json => renderMalla(json))
+      .catch(e => {
+        document.body.innerText = "Error cargando malla.json";
+        console.error(e);
+      });
+  </script>
+</body>
+</html>
